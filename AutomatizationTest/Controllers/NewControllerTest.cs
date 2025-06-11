@@ -1,1 +1,33 @@
-using System.Linq; using Microsoft.AspNetCore.Mvc; using System.Threading.Tasks; using SistemaCompensaciones.Data; using SistemaCompensaciones.Models; namespace SistemaCompensaciones.Controllers { public class RegistroHorasExtrasController : Controller { private readonly ApplicationDbContext _context; public RegistroHorasExtrasController(ApplicationDbContext context) { _context = context; } public async Task<IActionResult> Create() { return View(); } [HttpPost] [ValidateAntiForgeryToken] public async Task<IActionResult> Create([Bind("EmpleadoId", "Horas", "Fecha")] RegistroHorasExtras registro) { if (ModelState.IsValid) { registro.Estado = "Pendiente"; _context.Add(registro); await _context.SaveChangesAsync(); return RedirectToAction(nameof(Index)); } return View(registro); } public async Task<IActionResult> Index() { return View(await _context.RegistroHorasExtras.Include(r => r.Empleado).ToListAsync()); } } }
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.AspNetCore.Mvc;
+using ProyectoHorasExtras.Models;
+using ProyectoHorasExtras.Data;
+
+namespace ProyectoHorasExtras.Controllers
+{
+    public class SolicitudHorasExtrasController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public SolicitudHorasExtrasController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        [HttpPost]
+        public IActionResult RegistrarSolicitud(SolicitudHorasExtras solicitud)
+        {
+            if (ModelState.IsValid)
+            {
+                solicitud.FechaSolicitada = DateTime.Now;
+                solicitud.Estado = "Pendiente";
+                _context.SolicitudesHorasExtras.Add(solicitud);
+                _context.SaveChanges();
+                return RedirectToAction("EstadoSolicitud", new { id = solicitud.Id });
+            }
+            return View(solicitud);
+        }
+    }
+}
