@@ -1,1 +1,57 @@
-using System; using System.Linq; using Microsoft.AspNetCore.Mvc; using Microsoft.EntityFrameworkCore; using Proyecto.Models; using Proyecto.Data; namespace Proyecto.Controllers { public class UsuarioController : Controller { private readonly ApplicationDbContext _context; public UsuarioController(ApplicationDbContext context) { _context = context; } public IActionResult Registro() { return View(); } [HttpPost] public async Task<IActionResult> Registro(Usuario usuario) { if (ModelState.IsValid) { usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(usuario.Password); usuario.FechaCreacion = DateTime.Now; _context.Add(usuario); await _context.SaveChangesAsync(); return RedirectToAction("Index", "Home"); } return View(usuario); } public IActionResult InicioSesion() { return View(); } [HttpPost] public IActionResult InicioSesion(string email, string password) { var usuario = _context.Usuarios.SingleOrDefault(u => u.Email == email); if (usuario != null && BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash)) { // Lógica para manejo de sesión return RedirectToAction("Index", "Home"); } ModelState.AddModelError(string.Empty, "Correo electrónico o contraseña incorrectos."); return View(); } public async Task<IActionResult> EditarPerfil(int? id) { if (id == null) { return NotFound(); } var usuario = await _context.Usuarios.FindAsync(id); if (usuario == null) { return NotFound(); } return View(usuario); } [HttpPost] public async Task<IActionResult> EditarPerfil(int id, Usuario usuario) { if (id != usuario.ID) { return NotFound(); } if (ModelState.IsValid) { try { _context.Update(usuario); await _context.SaveChangesAsync(); return RedirectToAction(nameof(Index)); } catch (DbUpdateConcurrencyException) { if (!UsuarioExists(usuario.ID)) { return NotFound(); } else { throw; } } } return View(usuario); } private bool UsuarioExists(int id) { return _context.Usuarios.Any(e => e.ID == id); } public IActionResult CerrarSesion() { // Lógica de cierre de sesión return RedirectToAction("InicioSesion"); } } }
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
+using Proyecto.Data;
+using Proyecto.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace Proyecto.Controllers
+{
+    public class CuentaController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public CuentaController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        public IActionResult Registro()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Registro(Usuario usuario)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(usuario);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Login));
+            }
+            return View(usuario);
+        }
+
+        public IActionResult Login()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Login(LoginViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = await _context.Usuarios
+                    .FirstOrDefaultAsync(u => u.Email == model.Email && u.Password == model.Password);
+                if (user != null)
+                {
+                    // Lógica para gestionar la sesión
+                    return RedirectToAction("Index", "Home");
+                }
+                ModelState.AddModelError(string.Empty, "Usuario o contraseña incorrectos.");
+            }
+            return View(model);
+        }
+    }
+}
